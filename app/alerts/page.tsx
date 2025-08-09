@@ -1,7 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic"; // don't prerender this page
-export const revalidate = 0;
+export const dynamic = "force-dynamic"; // disable prerendering/ISR for this route
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
