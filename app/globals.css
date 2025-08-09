@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --brand: #00d09c; }
+html, body { height:100%; background:#0d1117; color:#e6edf3; }
+a { color: var(--brand); text-decoration: none; }
+.card { @apply bg-bg-card border border-bg-border rounded-2xl p-4; }
+.badge { @apply text-xs rounded-full border px-2 py-0.5; border-color: #1b574b; background: rgba(0,208,156,.12); color:#8ff4dc; }
+.btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium border border-bg-border hover:opacity-90; }
+.btn-primary { background: var(--brand); color: #0b0f12; border-color: transparent; }
+.input { @apply w-full bg-transparent border border-bg-border rounded-xl px-3 py-2 outline-none focus:outline-none focus:ring-1 focus:ring-brand; }
+.select, .number { @apply w-full bg-transparent border border-bg-border rounded-xl px-3 py-2; }
+.grid-cards { @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5; }
