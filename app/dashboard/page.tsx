@@ -1,7 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic"; // don't prerender this page
-export const revalidate = 0;
+export const dynamic = "force-dynamic"; // disable prerendering/ISR for this route
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,7 +17,7 @@ export default function Dashboard() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [windowSel, setWindowSel] = useState("24h");
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false); // waits until we read localStorage on client
+  const [ready, setReady] = useState(false); // wait until client-side
 
   // Read auth/email only on client
   useEffect(() => {
@@ -54,12 +53,12 @@ export default function Dashboard() {
   // Periodic refresh
   useEffect(() => {
     if (!ready) return;
-    const id = setInterval(load, 45000); // 45s to play nice with rate limits
+    const id = setInterval(load, 45000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, windowSel, email]);
 
-  if (!ready) return null; // avoids SSR/localStorage mismatch
+  if (!ready) return null;
 
   return (
     <div>
