@@ -1,5 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+export const dynamic = "force-dynamic"; // don't prerender this page
+export const revalidate = 0;
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { CoinCard } from "@/components/CoinCard";
@@ -9,17 +13,27 @@ type PredictRes = { coins: Coin[]; window: string; stale: boolean; backend_error
 
 export default function Dashboard() {
   const r = useRouter();
+
+  const [email, setEmail] = useState<string>("");
   const [coins, setCoins] = useState<Coin[]>([]);
   const [windowSel, setWindowSel] = useState("24h");
   const [loading, setLoading] = useState(false);
-  const email = useMemo(()=>localStorage.getItem("email")||"", []);
+  const [ready, setReady] = useState(false); // waits until we read localStorage on client
 
+  // Read auth/email only on client
   useEffect(() => {
-    const authed = localStorage.getItem("authed") === "1";
-    if (!authed) r.replace("/login");
+    const authed = typeof window !== "undefined" && localStorage.getItem("authed") === "1";
+    if (!authed) {
+      r.replace("/login");
+      return;
+    }
+    const em = typeof window !== "undefined" ? (localStorage.getItem("email") || "") : "";
+    setEmail(em);
+    setReady(true);
   }, [r]);
 
-  const load = async () => {
+  async function load() {
+    if (!email) return;
     setLoading(true);
     try {
       const data = await api.get<PredictRes>("/predict", { email, window: windowSel });
@@ -29,13 +43,23 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => { load(); }, [windowSel]); // first load + when window changes
+  // Initial + when window changes (after ready)
   useEffect(() => {
+    if (ready) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowSel, ready, email]);
+
+  // Periodic refresh
+  useEffect(() => {
+    if (!ready) return;
     const id = setInterval(load, 45000); // 45s to play nice with rate limits
     return () => clearInterval(id);
-  }, [windowSel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, windowSel, email]);
+
+  if (!ready) return null; // avoids SSR/localStorage mismatch
 
   return (
     <div>
@@ -46,16 +70,27 @@ export default function Dashboard() {
           <option value="12h">12h</option>
           <option value="24h">24h</option>
         </select>
-        <button className="btn" onClick={load} disabled={loading}>{loading? "Refreshing..." : "Refresh"}</button>
+        <button className="btn" onClick={load} disabled={loading}>
+          {loading ? "Refreshing..." : "Refresh"}
+        </button>
         <div className="ml-auto flex gap-2">
-          <button className="btn" onClick={()=>{ localStorage.setItem("authed","0"); localStorage.removeItem("email"); r.replace("/login"); }}>Log out</button>
+          <button
+            className="btn"
+            onClick={()=>{
+              if (typeof window !== "undefined") {
+                localStorage.setItem("authed","0");
+                localStorage.removeItem("email");
+              }
+              r.replace("/login");
+            }}
+          >
+            Log out
+          </button>
         </div>
       </div>
 
       <div className="grid-cards">
-        {coins.map(c => (
-          <CoinCard key={c.symbol} {...c} />
-        ))}
+        {coins.map(c => (<CoinCard key={c.symbol} {...c} />))}
       </div>
     </div>
   );
