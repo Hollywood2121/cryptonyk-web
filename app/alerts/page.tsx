@@ -1,5 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+export const dynamic = "force-dynamic"; // don't prerender this page
+export const revalidate = 0;
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
@@ -7,21 +11,30 @@ type Alert = { symbol:string; direction:"UP"|"DOWN"; percent:number; };
 
 export default function AlertsPage() {
   const r = useRouter();
-  const email = useMemo(()=>localStorage.getItem("email")||"", []);
+
+  const [ready, setReady] = useState(false);
+  const [email, setEmail] = useState<string>("");
+
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [symbol, setSymbol] = useState("BTC");
   const [direction, setDirection] = useState<"UP"|"DOWN">("UP");
   const [percent, setPercent] = useState(1.0);
   const [msg, setMsg] = useState<string | null>(null);
 
+  // Client-only auth/email read
   useEffect(() => {
-    const authed = localStorage.getItem("authed") === "1";
-    if (!authed) r.replace("/login");
-    else refresh();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const authed = typeof window !== "undefined" && localStorage.getItem("authed") === "1";
+    if (!authed) {
+      r.replace("/login");
+      return;
+    }
+    const em = typeof window !== "undefined" ? (localStorage.getItem("email") || "") : "";
+    setEmail(em);
+    setReady(true);
+  }, [r]);
 
   async function refresh() {
+    if (!email) return;
     setMsg(null);
     try {
       const data = await api.get<{alerts:Alert[]}>("/alerts", { email });
@@ -30,9 +43,9 @@ export default function AlertsPage() {
   }
 
   async function add() {
+    if (!email) return;
     setMsg(null);
     try {
-      // use GET helper endpoint for simplicity
       await api.get("/alerts/add", { email, symbol, direction, percent });
       setMsg("Saved ✔");
       await refresh();
@@ -40,12 +53,17 @@ export default function AlertsPage() {
   }
 
   async function remove(a: Alert) {
+    if (!email) return;
     setMsg(null);
     try {
       await api.del("/alerts", { email, symbol: a.symbol, direction: a.direction, percent: a.percent });
       await refresh();
     } catch (e:any) { setMsg(e.message); }
   }
+
+  useEffect(() => { if (ready) refresh(); }, [ready, email]);
+
+  if (!ready) return null;
 
   return (
     <div>
